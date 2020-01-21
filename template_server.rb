@@ -11,23 +11,6 @@ set :port, 3000
 set :bind, '0.0.0.0'
 
 
-# This is template code to create a GitHub App server.
-# You can read more about GitHub Apps here: # https://developer.github.com/apps/
-#
-# On its own, this app does absolutely nothing, except that it can be installed.
-# It's up to you to add functionality!
-# You can check out one example in advanced_server.rb.
-#
-# This code is a Sinatra app, for two reasons:
-#   1. Because the app will require a landing page for installation.
-#   2. To easily handle webhook events.
-#
-# Of course, not all apps need to receive and process events!
-# Feel free to rip out the event handling code if you don't need it.
-#
-# Have fun!
-#
-
 class GHAapp < Sinatra::Application
 
   # Expects that the private key in PEM format. Converts the newlines
@@ -56,21 +39,33 @@ class GHAapp < Sinatra::Application
   end
 
 
+  get '/repos/LiliJi/CET-CitySmart/contents/CitySmart/src/InfoForm.js' do
+    logger.debug 'AAAAAAAAAAAAAAAAAAAAAAAA'
+    200
+  end
+
   post '/event_handler' do
 
-    # # # # # # # # # # # #
-    # ADD YOUR CODE HERE  #
-    # # # # # # # # # # # #
-
+    case request.env['HTTP_X_GITHUB_EVENT']
+    when 'push'
+      handle_push_event(@payload)
+    when 'pull_request'
+      if @payload['action'] === 'opened'
+         handle_push_event(@payload)
+      end
+    end
     200 # success status
   end
 
 
   helpers do
-
-    # # # # # # # # # # # # # # # # #
-    # ADD YOUR HELPER METHODS HERE  #
-    # # # # # # # # # # # # # # # # #
+    def handle_push_event(payload)
+      `rm /home/centos/payload.json`
+      File.open("/home/centos/payload.json","a+") do |f|
+      f.puts payload
+      end
+      `/home/centos/gitapp.sh`
+    end
 
     # Saves the raw payload and converts the payload to JSON format
     def get_payload_request(request)
@@ -143,11 +138,5 @@ class GHAapp < Sinatra::Application
 
   end
 
-  # Finally some logic to let us run this server directly from the command line,
-  # or with Rack. Don't worry too much about this code. But, for the curious:
-  # $0 is the executed file
-  # __FILE__ is the current file
-  # If they are the same—that is, we are running this file directly, call the
-  # Sinatra run method
   run! if __FILE__ == $0
 end
