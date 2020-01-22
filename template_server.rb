@@ -6,6 +6,8 @@ require 'openssl'     # Verifies the webhook signature
 require 'jwt'         # Authenticates a GitHub App
 require 'time'        # Gets ISO 8601 representation of a Time object
 require 'logger'      # Logs debug statements
+require 'http'
+
 
 set :port, 3000
 set :bind, '0.0.0.0'
@@ -38,11 +40,6 @@ class GHAapp < Sinatra::Application
     authenticate_installation(@payload)
   end
 
-
-  get '/repos/LiliJi/CET-CitySmart/contents/CitySmart/src/InfoForm.js' do
-    logger.debug 'AAAAAAAAAAAAAAAAAAAAAAAA'
-    200
-  end
 
   post '/event_handler' do
 
@@ -100,16 +97,20 @@ class GHAapp < Sinatra::Application
 
       # Cryptographically sign the JWT.
       jwt = JWT.encode(payload, PRIVATE_KEY, 'RS256')
-
       # Create the Octokit client, using the JWT as the auth token.
       @app_client ||= Octokit::Client.new(bearer_token: jwt)
     end
 
     # Instantiate an Octokit client, authenticated as an installation of a
-    # GitHub App, to run API operations.
+    # GitHub App, to run API operations.                 .headers(:accept => "application/vnd.github.machine-man-preview+json")
+
     def authenticate_installation(payload)
       @installation_id = payload['installation']['id']
       @installation_token = @app_client.create_app_installation_access_token(@installation_id)[:token]
+      logger.debug "Bearer #@installation_token"
+      response=HTTP.auth("Bearer #@installation_token")
+                   .get('https://api.github.com/repos/LiliJi/CET-CitySmart/contents/CitySmart/src/InfoForm.js').to_s
+      logger.debug response
       @installation_client = Octokit::Client.new(bearer_token: @installation_token)
     end
 
