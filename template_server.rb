@@ -7,7 +7,7 @@ require 'jwt'         # Authenticates a GitHub App
 require 'time'        # Gets ISO 8601 representation of a Time object
 require 'logger'      # Logs debug statements
 require 'http'
-
+require "base64"
 
 set :port, 3000
 set :bind, '0.0.0.0'
@@ -107,10 +107,12 @@ class GHAapp < Sinatra::Application
     def authenticate_installation(payload)
       @installation_id = payload['installation']['id']
       @installation_token = @app_client.create_app_installation_access_token(@installation_id)[:token]
-      logger.debug "Bearer #@installation_token"
+      #logger.debug "Bearer #@installation_token"
       response=HTTP.auth("Bearer #@installation_token")
                    .get('https://api.github.com/repos/LiliJi/CET-CitySmart/contents/CitySmart/src/InfoForm.js').to_s
-      logger.debug response
+      response_json = JSON.parse response
+      filecontent = response_json['content']
+      logger.debug Base64.decode64(filecontent)
       @installation_client = Octokit::Client.new(bearer_token: @installation_token)
     end
 
