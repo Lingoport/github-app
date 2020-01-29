@@ -8,6 +8,7 @@ require 'time'        # Gets ISO 8601 representation of a Time object
 require 'logger'      # Logs debug statements
 require 'http'
 require "base64"
+require 'open3'
 
 set :port, 3000
 set :bind, '0.0.0.0'
@@ -57,11 +58,42 @@ class GHAapp < Sinatra::Application
 
   helpers do
     def handle_push_event(payload)
+      err_FILE = '/tmp/err.txt'
+      #COMMENT_WORKSPACE=
+    #  `java -jar /home/centos/globalyzer-lite/globalyzer-lite.jar "/home/centos/lite.xml" -pp "$COMMENT_WORKSPACE"  --report-path "/home/centos/GlobalyzerScans" 2> #{ERR_FILE}`
+      githubURL = payload['repository']['commits_url'].gsub(/repos./, 'repos.'=>'')
+      githubURL = githubURL.gsub(/commits\{\/sha\}/, '/commits{/sha}'=>'')
+      githubLogin = payload['sender']['login']
+      githubOauth = @installation_token
+      repo = payload['repository']['full_name']
+      commitBranch = payload['ref'].gsub(/refs\/heads\//, 'refs/heads/'=>'')
+      commitSha = payload['after']
+      githubPath = payload['repository']['url']
+      reportsDir = '/home/centos/tmp/'+commitSha
+      githubURL = 'https://api.github.com'
+    #  logger.debug githubOauth
+      logger.debug githubURL
+      logger.debug githubLogin
+      logger.debug repo
+      logger.debug commitBranch
+      logger.debug githubPath
+      logger.debug reportsDir
+    #  `java -jar /home/centos/lingoport-github-pull-request-cli.jar --add-comment-commit -gu "$githubURL" -gl "$githubLogin" -gt "$githubOauth" -gr "$repo" -br "$commitBranch" -gcs "$commitSha" -gp "$githubPath" -rd "$reportsDir" 2> ${ERR_FILE}`
+      reportsDir = '/home/centos/GlobalyzerScans'
+
       `rm /home/centos/payload.json`
       File.open("/home/centos/payload.json","a+") do |f|
       f.puts payload
       end
-      `/home/centos/gitapp.sh`
+    #  `/home/centos/gitapp.sh`
+    #  cmd = '/home/centos/gitapp.sh'
+      cmd = 'java -jar /home/centos/lingoport-github-pull-request-cli.jar --add-comment-commit -gu '+githubURL+ ' -gl '+githubLogin+' -gt '+githubOauth+' -gr '+repo+' -br '+commitBranch + ' -gcs '+commitSha+ ' -gp '+githubPath +' -rd '+reportsDir
+      logger.debug cmd
+      Open3.popen3(cmd) do |stdin, stdout, stderr, wait_thr|
+        while line = stdout.gets
+          puts line
+        end
+      end
     end
 
     # Saves the raw payload and converts the payload to JSON format
@@ -112,7 +144,7 @@ class GHAapp < Sinatra::Application
                    .get('https://api.github.com/repos/LiliJi/CET-CitySmart/contents/CitySmart/src/InfoForm.js').to_s
       response_json = JSON.parse response
       filecontent = response_json['content']
-      logger.debug Base64.decode64(filecontent)
+      #logger.debug Base64.decode64(filecontent)
       @installation_client = Octokit::Client.new(bearer_token: @installation_token)
     end
 
