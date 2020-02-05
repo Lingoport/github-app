@@ -31,6 +31,15 @@ class GHAapp < Sinatra::Application
     set :logging, Logger::DEBUG
   end
 
+  get '/' do
+    "Hello World"
+  #  if request.query_string != nil then
+  #    logger.debug request.query_string[5..24]
+     response=HTTP
+                .post('https://github.com/login/oauth/access_token/?client_id=Iv1.0b8f46a5672045a4&client_secret=c038105b6721e0c0cf1486065b01cab0ebadd88d&code='+request.query_string[5..24])
+     logger.debug response.to_s
+#    end
+  end
 
   # Before each request to the `/event_handler` route
   before '/event_handler' do
@@ -144,6 +153,7 @@ class GHAapp < Sinatra::Application
                    .get('https://api.github.com/repos/LiliJi/CET-CitySmart/contents/CitySmart/src/InfoForm.js').to_s
       response_json = JSON.parse response
       filecontent = response_json['content']
+
       #logger.debug Base64.decode64(filecontent)
       @installation_client = Octokit::Client.new(bearer_token: @installation_token)
     end
