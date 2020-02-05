@@ -26,19 +26,29 @@ class GHAapp < Sinatra::Application
   # The GitHub App's identifier (type integer) set when registering an app.
   APP_IDENTIFIER = ENV['GITHUB_APP_IDENTIFIER']
 
+  CLIENT_ID = ENV['GITHUB_CLIENT_ID']
+
+  CLIENT_SECRET = ENV['GITHUB_CLIENT_SECRET']
+
   # Turn on Sinatra's verbose logging during development
   configure :development do
     set :logging, Logger::DEBUG
   end
 
   get '/' do
-    "Hello World"
   #  if request.query_string != nil then
   #    logger.debug request.query_string[5..24]
      response=HTTP
-                .post('https://github.com/login/oauth/access_token/?client_id=Iv1.0b8f46a5672045a4&client_secret=c038105b6721e0c0cf1486065b01cab0ebadd88d&code='+request.query_string[5..24])
+                .post('https://github.com/login/oauth/access_token/?client_id='+CLIENT_ID+'&client_secret='+CLIENT_SECRET+'&code='+request.query_string[5..24])
      logger.debug response.to_s
+     @accesstoken = response.to_s[13..52]
+     logger.debug @accesstoken
+     get_user=HTTP.headers(:accept => "application/vnd.github.machine-man-preview+json")
+                  .auth("Bearer #@accesstoken")
+                  .get('https://api.github.com/user')
+     logger.debug get_user.to_s              
 #    end
+     "Hello World"
   end
 
   # Before each request to the `/event_handler` route
