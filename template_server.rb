@@ -9,6 +9,7 @@ require 'logger'      # Logs debug statements
 require 'http'
 require "base64"
 require 'open3'
+require 'mysql2'
 
 set :port, 3000
 set :bind, '0.0.0.0'
@@ -30,14 +31,17 @@ class GHAapp < Sinatra::Application
 
   CLIENT_SECRET = ENV['GITHUB_CLIENT_SECRET']
 
+  DATABASE_PASS = ENV['MYSQL_PASSWORD']
+
+  DATABASE_USER = ENV['MYSQL_USER']
+
   # Turn on Sinatra's verbose logging during development
   configure :development do
     set :logging, Logger::DEBUG
   end
 
   get '/' do
-  #  if request.query_string != nil then
-  #    logger.debug request.query_string[5..24]
+   if request.query_string.empty? == false
      response=HTTP
                 .post('https://github.com/login/oauth/access_token/?client_id='+CLIENT_ID+'&client_secret='+CLIENT_SECRET+'&code='+request.query_string[5..24])
      logger.debug response.to_s
@@ -46,11 +50,20 @@ class GHAapp < Sinatra::Application
      get_user=HTTP.headers(:accept => "application/vnd.github.machine-man-preview+json")
                   .auth("Bearer #@accesstoken")
                   .get('https://api.github.com/user')
-     logger.debug get_user.to_s              
-#    end
+     logger.debug get_user.to_s
+     client = Mysql2::Client.new(
+         :host     => '127.0.0.1',
+         :username => DATABASE_USER,
+         :password => DATABASE_PASS,
+         :database => 'user',
+         :encoding => 'utf8'
+         )
+     client.query("delete FROM user_tbl WHERE user_name='test1'")
+     results = client.query("INSERT into user_tbl(user_name, user_token) values ('test1',#@accesstoken)")
+    end
      "Hello World"
   end
-
+#
   # Before each request to the `/event_handler` route
   before '/event_handler' do
     get_payload_request(request)
@@ -153,7 +166,8 @@ class GHAapp < Sinatra::Application
     end
 
     # Instantiate an Octokit client, authenticated as an installation of a
-    # GitHub App, to run API operations.                 .headers(:accept => "application/vnd.github.machine-man-preview+json")
+    # GitHub App, to run API operations.
+    #.headers(:accept => "application/vnd.github.machine-man-preview+json")
 
     def authenticate_installation(payload)
       @installation_id = payload['installation']['id']
