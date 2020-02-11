@@ -44,15 +44,16 @@ class GHAapp < Sinatra::Application
    if request.query_string.empty? == false
      response=HTTP
                 .post('https://github.com/login/oauth/access_token/?client_id='+CLIENT_ID+'&client_secret='+CLIENT_SECRET+'&code='+request.query_string[5..24])
-     logger.debug response.to_s
      @accesstoken = response.to_s[13..52]
-     logger.debug @accesstoken
 
      if @accesstoken != "ification_code&error_description=The+cod"
        get_user=HTTP.headers(:accept => "application/vnd.github.machine-man-preview+json")
                   .auth("Bearer #@accesstoken")
                   .get('https://api.github.com/user')
-       logger.debug get_user.to_s
+
+       userid_json = JSON.parse get_user.to_s
+       @userid = userid_json['login']
+       logger.debug @userid
        client = Mysql2::Client.new(
            :host     => '127.0.0.1',
            :username => DATABASE_USER,
@@ -60,8 +61,8 @@ class GHAapp < Sinatra::Application
            :database => 'user',
            :encoding => 'utf8'
            )
-       client.query("delete FROM user_tbl WHERE user_name='test1'")
-       results = client.query("INSERT into user_tbl(user_name, user_token) values ('test1','#@accesstoken')")
+       client.query("delete FROM user_tbl WHERE user_name='#@userid'")
+       results = client.query("INSERT into user_tbl(user_name, user_token) values ('#@userid','#@accesstoken')")
      end
     end
      "Hello World"
