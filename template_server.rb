@@ -111,13 +111,22 @@ class GHAapp < Sinatra::Application
       $i = 0
       while $i < $size  do
       #  post_request = 'https://api.github.com/repos/'+repo+'/contents/'+fileList[$i]+'?ref='+commitBranch
-        logger.debug post_request
+      #  logger.debug post_request
         response=HTTP.auth("Bearer #@installation_token")
                      .get('https://api.github.com/repos/'+repo+'/contents/'+fileList[$i]).to_s
         response_json = JSON.parse response
         filecontent = response_json['content']
+      #  logger.debug Base64.decode64(filecontent)
+        file_directory = fileList[$i]
+        while file_directory[-1] != '/' do
+          file_directory = file_directory[0..file_directory.length-2]
+        end
+        workspace_path = '/home/centos/tmp/workspace/'+commitSha[5..10]+ '/'+file_directory
+        FileUtils.mkdir_p(workspace_path, :mode => 0777)
+        aFile = File.new('/home/centos/tmp/workspace/'+commitSha[5..10]+ '/'+fileList[$i], "w+")
+        aFile.syswrite(Base64.decode64(filecontent))
+        aFile.close
         $i +=1
-        logger.debug Base64.decode64(filecontent)
       end
     #  logger.debug githubOauth
       logger.debug githubURL
