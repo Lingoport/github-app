@@ -53,7 +53,6 @@ class GHAapp < Sinatra::Application
 
        userid_json = JSON.parse get_user.to_s
        @userid = userid_json['login']
-       logger.debug @userid
        client = Mysql2::Client.new(
            :host     => '127.0.0.1',
            :username => DATABASE_USER,
@@ -65,9 +64,9 @@ class GHAapp < Sinatra::Application
        results = client.query("INSERT into user_tbl(user_name, user_token) values ('#@userid','#@accesstoken')")
      end
     end
-     "Hello World"
+     "Congratulations, installation completed successfully!"
   end
-#
+
   # Before each request to the `/event_handler` route
   before '/event_handler' do
     get_payload_request(request)
@@ -79,7 +78,6 @@ class GHAapp < Sinatra::Application
 
 
   post '/event_handler' do
-
     case request.env['HTTP_X_GITHUB_EVENT']
     when 'push'
       handle_push_event(@payload)
@@ -107,6 +105,20 @@ class GHAapp < Sinatra::Application
       githubPath = payload['repository']['url']
       reportsDir = '/home/centos/tmp/'+commitSha
       githubURL = 'https://api.github.com'
+      fileList = payload['head_commit']["modified"]
+      $size= fileList.size
+      logger.debug fileList
+      $i = 0
+      while $i < $size  do
+      #  post_request = 'https://api.github.com/repos/'+repo+'/contents/'+fileList[$i]+'?ref='+commitBranch
+        logger.debug post_request
+        response=HTTP.auth("Bearer #@installation_token")
+                     .get('https://api.github.com/repos/'+repo+'/contents/'+fileList[$i]).to_s
+        response_json = JSON.parse response
+        filecontent = response_json['content']
+        $i +=1
+        logger.debug Base64.decode64(filecontent)
+      end
     #  logger.debug githubOauth
       logger.debug githubURL
       logger.debug githubLogin
@@ -177,12 +189,6 @@ class GHAapp < Sinatra::Application
       @installation_id = payload['installation']['id']
       @installation_token = @app_client.create_app_installation_access_token(@installation_id)[:token]
       #logger.debug "Bearer #@installation_token"
-      response=HTTP.auth("Bearer #@installation_token")
-                   .get('https://api.github.com/repos/LiliJi/CET-CitySmart/contents/CitySmart/src/InfoForm.js').to_s
-      response_json = JSON.parse response
-      filecontent = response_json['content']
-
-      #logger.debug Base64.decode64(filecontent)
       @installation_client = Octokit::Client.new(bearer_token: @installation_token)
     end
 
