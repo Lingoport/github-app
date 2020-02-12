@@ -93,14 +93,12 @@ class GHAapp < Sinatra::Application
   helpers do
     def handle_push_event(payload)
       err_FILE = '/tmp/err.txt'
-      #COMMENT_WORKSPACE=
-    #  `java -jar /home/centos/globalyzer-lite/globalyzer-lite.jar "/home/centos/lite.xml" -pp "$COMMENT_WORKSPACE"  --report-path "/home/centos/GlobalyzerScans" 2> #{ERR_FILE}`
       githubURL = payload['repository']['commits_url'].gsub(/repos./, 'repos.'=>'')
       githubURL = githubURL.gsub(/commits\{\/sha\}/, '/commits{/sha}'=>'')
       @githubLogin = payload['sender']['login']
-    #  githubOauth = @installation_token
       repo = payload['repository']['full_name']
       commitBranch = payload['ref'].gsub(/refs\/heads\//, 'refs/heads/'=>'')
+      #logger.debug commitBranch
       commitSha = payload['after']
       githubPath = payload['repository']['url']
       reportsDir = '/home/centos/tmp/'+commitSha
@@ -110,13 +108,11 @@ class GHAapp < Sinatra::Application
       logger.debug fileList
       $i = 0
       while $i < $size  do
-      #  post_request = 'https://api.github.com/repos/'+repo+'/contents/'+fileList[$i]+'?ref='+commitBranch
-      #  logger.debug post_request
         response=HTTP.auth("Bearer #@installation_token")
-                     .get('https://api.github.com/repos/'+repo+'/contents/'+fileList[$i]).to_s
+                     .get('https://api.github.com/repos/'+repo+'/contents/'+fileList[$i]+'?ref='+commitBranch).to_s
         response_json = JSON.parse response
         filecontent = response_json['content']
-      #  logger.debug Base64.decode64(filecontent)
+        #logger.debug Base64.decode64(filecontent)
         file_directory = fileList[$i]
         while file_directory[-1] != '/' do
           file_directory = file_directory[0..file_directory.length-2]
@@ -128,13 +124,6 @@ class GHAapp < Sinatra::Application
         aFile.close
         $i +=1
       end
-    #  logger.debug githubURL
-    #  logger.debug githubLogin
-    #  logger.debug repo
-    #  logger.debug commitBranch
-    #  logger.debug githubPath
-    #  logger.debug reportsDir
-
       liteScan = 'java -jar /home/centos/globalyzer-lite/globalyzer-lite.jar /home/centos/lingoport/LiteProjectDefinition.xml --pp /home/centos/tmp/workspace/' + commitSha[5..10] + ' --report-path /home/centos/GlobalyzerScans/' + commitSha[5..10] + ' --rl /home/centos/lingoport'
       logger.debug liteScan
       Open3.popen3(liteScan) do |stdin, stdout, stderr, wait_thr|
@@ -156,6 +145,18 @@ class GHAapp < Sinatra::Application
       cmd = 'java -jar /home/centos/lingoport-github-pull-request-cli.jar --add-comment-commit -gu '+githubURL+ ' -gl '+ @githubLogin+' -gt '+ @githubOauth+' -gr '+repo+' -br '+commitBranch + ' -gcs '+commitSha+ ' -gp '+githubPath +' -rd '+reportsDir
       logger.debug cmd
       Open3.popen3(cmd) do |stdin, stdout, stderr, wait_thr|
+        while line = stdout.gets
+          puts line
+        end
+      end
+      delete_source = 'rm -r /home/centos/tmp/workspace/' + commitSha[5..10]
+      delete_report = 'rm -r /home/centos/GlobalyzerScans/' + commitSha[5..10]
+      Open3.popen3(delete_source) do |stdin, stdout, stderr, wait_thr|
+        while line = stdout.gets
+          puts line
+        end
+      end
+      Open3.popen3(delete_report) do |stdin, stdout, stderr, wait_thr|
         while line = stdout.gets
           puts line
         end
