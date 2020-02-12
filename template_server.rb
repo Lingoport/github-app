@@ -152,14 +152,8 @@ class GHAapp < Sinatra::Application
       delete_source = 'rm -r /home/centos/tmp/workspace/' + commitSha[5..10]
       delete_report = 'rm -r /home/centos/GlobalyzerScans/' + commitSha[5..10]
       Open3.popen3(delete_source) do |stdin, stdout, stderr, wait_thr|
-        while line = stdout.gets
-          puts line
-        end
       end
       Open3.popen3(delete_report) do |stdin, stdout, stderr, wait_thr|
-        while line = stdout.gets
-          puts line
-        end
       end
     end
 
