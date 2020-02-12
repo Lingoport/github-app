@@ -97,8 +97,8 @@ class GHAapp < Sinatra::Application
     #  `java -jar /home/centos/globalyzer-lite/globalyzer-lite.jar "/home/centos/lite.xml" -pp "$COMMENT_WORKSPACE"  --report-path "/home/centos/GlobalyzerScans" 2> #{ERR_FILE}`
       githubURL = payload['repository']['commits_url'].gsub(/repos./, 'repos.'=>'')
       githubURL = githubURL.gsub(/commits\{\/sha\}/, '/commits{/sha}'=>'')
-      githubLogin = payload['sender']['login']
-      githubOauth = @installation_token
+      @githubLogin = payload['sender']['login']
+    #  githubOauth = @installation_token
       repo = payload['repository']['full_name']
       commitBranch = payload['ref'].gsub(/refs\/heads\//, 'refs/heads/'=>'')
       commitSha = payload['after']
@@ -128,23 +128,32 @@ class GHAapp < Sinatra::Application
         aFile.close
         $i +=1
       end
-    #  logger.debug githubOauth
-      logger.debug githubURL
-      logger.debug githubLogin
-      logger.debug repo
-      logger.debug commitBranch
-      logger.debug githubPath
-      logger.debug reportsDir
-    #  `java -jar /home/centos/lingoport-github-pull-request-cli.jar --add-comment-commit -gu "$githubURL" -gl "$githubLogin" -gt "$githubOauth" -gr "$repo" -br "$commitBranch" -gcs "$commitSha" -gp "$githubPath" -rd "$reportsDir" 2> ${ERR_FILE}`
-      reportsDir = '/home/centos/GlobalyzerScans'
+    #  logger.debug githubURL
+    #  logger.debug githubLogin
+    #  logger.debug repo
+    #  logger.debug commitBranch
+    #  logger.debug githubPath
+    #  logger.debug reportsDir
 
-      `rm /home/centos/payload.json`
-      File.open("/home/centos/payload.json","a+") do |f|
-      f.puts payload
+      liteScan = 'java -jar /home/centos/globalyzer-lite/globalyzer-lite.jar /home/centos/lingoport/LiteProjectDefinition.xml --pp /home/centos/tmp/workspace/' + commitSha[5..10] + ' --report-path /home/centos/GlobalyzerScans/' + commitSha[5..10] + ' --rl /home/centos/lingoport'
+      logger.debug liteScan
+      Open3.popen3(liteScan) do |stdin, stdout, stderr, wait_thr|
+        while line = stdout.gets
+          puts line
+        end
       end
-    #  `/home/centos/gitapp.sh`
-    #  cmd = '/home/centos/gitapp.sh'
-      cmd = 'java -jar /home/centos/lingoport-github-pull-request-cli.jar --add-comment-commit -gu '+githubURL+ ' -gl '+githubLogin+' -gt '+githubOauth+' -gr '+repo+' -br '+commitBranch + ' -gcs '+commitSha+ ' -gp '+githubPath +' -rd '+reportsDir
+      reportsDir = '/home/centos/GlobalyzerScans/'+ commitSha[5..10]
+      client = Mysql2::Client.new(
+          :host     => '127.0.0.1',
+          :username => DATABASE_USER,
+          :password => DATABASE_PASS,
+          :database => 'user',
+          :encoding => 'utf8'
+          )
+      client.query("SELECT user_token FROM user_tbl WHERE user_name='#@githubLogin'").each do |row|
+        @githubOauth = row.to_s[16..55]
+      end
+      cmd = 'java -jar /home/centos/lingoport-github-pull-request-cli.jar --add-comment-commit -gu '+githubURL+ ' -gl '+ @githubLogin+' -gt '+ @githubOauth+' -gr '+repo+' -br '+commitBranch + ' -gcs '+commitSha+ ' -gp '+githubPath +' -rd '+reportsDir
       logger.debug cmd
       Open3.popen3(cmd) do |stdin, stdout, stderr, wait_thr|
         while line = stdout.gets
